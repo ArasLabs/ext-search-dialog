@@ -31,8 +31,8 @@
 	<script type="text/javascript">
 		var topWnd = TopWindowHelper.getMostTopWindowWithAras(window);
 
-		var searchArguments = {}, returnValueBackup = typeof (returnValue) === "undefined" ? undefined : returnValue,
-			tmpSearchArguments = parent.dialogArguments || topWnd.dialogArguments;
+		var searchArguments = {},
+			tmpSearchArguments = window.frameElement.dialogArguments;
 		if (typeof tmpSearchArguments === "object") {
 			//make a copy of the original arguments because of nested popup can modify dialogArguments
 			for (var k in tmpSearchArguments) {
@@ -154,7 +154,7 @@
 
 		initPage(true);
 		if (searchArguments.dialog) {
-			searchArguments.dialog.set("title", aras.getResource("", "searchdlg.search", (itemTypeLabel ? itemTypeLabel : itemTypeName)))
+			searchArguments.dialog.setTitle(aras.getResource("", "searchdlg.search", (itemTypeLabel ? itemTypeLabel : itemTypeName)))
 		} else {
 			document.title = aras.getResource("", "searchdlg.search", (itemTypeLabel ? itemTypeLabel : itemTypeName));
 		}
@@ -302,13 +302,7 @@
 				res.keyed_name = newItem.getAttribute("id");
 				res.item = newItem;
 				
-				if (searchArguments.callback) {
-					searchArguments.callback(res);
-					setTimeout(function () {
-						searchArguments.dialog.onCancel();
-						res = returnValueBackup;
-					}, 0);
-				}
+				searchArguments.dialog.close(res);
 			}
 			// Add Neosystem End
 		}
@@ -359,16 +353,7 @@
 					returnValue = makeReturnValue(itemID);
 				}
 
-				if (searchArguments.callback) {
-					searchArguments.callback(returnValue);
-					setTimeout(function () {
-						searchArguments.dialog.onCancel();
-						returnValue = returnValueBackup;
-					}, 0);
-				}
-				else {
-					window.close();
-				}
+				searchArguments.dialog.close(returnValue);
 			}
 
 			if (handler) {
