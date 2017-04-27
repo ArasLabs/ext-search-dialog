@@ -10,12 +10,14 @@ This project and the following release notes have been migrated from the old Ara
 
 Release | Notes
 --------|--------
-[v10SP4](https://github.com/ArasLabs/ext-search-dialog/releases/tag/v10SP4) | Instructions are described in the ReadMe.pdf
+[v11SP5](https://github.com/ArasLabs/ext-search-dialog/releases/tag/v11SP5) | Support version 11SP5. Instructions are described in the ReadMe.pdf
+[v10SP4](https://github.com/ArasLabs/ext-search-dialog/releases/tag/v10SP4) | Build v10.0 SP4 is the initial version. For How-to, please refer to the description in the ReadMe.pdf.
 
 #### Supported Aras Versions
 
 Project | Aras
 --------|------
+[v11SP5](https://github.com/ArasLabs/ext-search-dialog/releases/tag/v11SP5) | 11.0 SP5
 [v10SP4](https://github.com/ArasLabs/ext-search-dialog/releases/tag/v10SP4) | 10.0 SP4
 
 ## Installation

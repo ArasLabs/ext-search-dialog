@@ -6,8 +6,6 @@
     <button image="../images/ClearSearchCriteria.svg" id="newsearch" tooltip="Clear Search Criteria" text="Clear Criteria"/>
     <button disabled="true" image="../images/StopSearch.svg" id="stop_search" tooltip="Stop Search" text="Stop Search" />
     <separator/>
-    <button disabled="true" image="../images/New.svg" id="new" tooltip="Create a New Item" text="New" />
-    <separator/>
     <choice width="auto" id="search_mode" tooltip="Search modes" text="Search Mode">
     </choice>
     <choice id="saved_search" tooltip="Saved searches" text="Saved searches" label="Saved searches:">

@@ -27,16 +27,21 @@
 	<script type="text/javascript" src="../javascript/dialog.js"></script>
 	<script type="text/javascript" src="../javascript/include.aspx?classes=ScriptSet1"></script>
 	<script type="text/javascript" src="../javascript/include.aspx?classes=ScriptSet6"></script>
+	<script type="text/javascript" src="../javascript/include.aspx?files=TopWindowHelper"></script>
 	<script type="text/javascript">
+		var topWnd = TopWindowHelper.getMostTopWindowWithAras(window);
+
 		var searchArguments = {}, returnValueBackup = typeof (returnValue) === "undefined" ? undefined : returnValue,
-			tmpSearchArguments = parent.dialogArguments || top.dialogArguments;
+			tmpSearchArguments = parent.dialogArguments || topWnd.dialogArguments;
 		if (typeof tmpSearchArguments === "object") {
 			//make a copy of the original arguments because of nested popup can modify dialogArguments
 			for (var k in tmpSearchArguments) {
 				searchArguments[k] = tmpSearchArguments[k];
 			}
 		}
-		var aras = top.aras ? top.aras : new Aras(searchArguments.aras);
+
+		//note, that aras is used in search_container.js and SearchGridObject.js. Do not rename it.
+		var aras = topWnd.aras ? topWnd.aras : new Aras(searchArguments.aras);
 	</script>
 	<script type="text/javascript" src="../javascript/include.aspx?classes=/dojo.js" data-dojo-config="baseUrl:'../javascript/dojo'"></script>
 	<script type="text/javascript">
@@ -238,8 +243,8 @@
 					grid.inputRow.set(grid.GetColumnIndex(colName), "disabled", true);
 				}
 			}
-			// Add Neosystem Y.Akaoka 2014/01/05
-			//debugger;
+
+			// Add Neosystem Start
 			var isRelation = (searchArguments.sourcePropertyName === "related_id")?true:false;
 			var currItemType = top.aras.getItemTypeDictionary(top.aras.getItemTypeName(itemTypeID));
 			if (!currItemType || currItemType.isError())
@@ -260,8 +265,8 @@
 					tbi.setEnabled((isRelation)?false:can_addFlg);
 				}
 			}
+			// Add Neosystem End
 
-			
 			searchReady = true;
 			searchContainer.runAutoSearch();
 		}
@@ -286,10 +291,10 @@
 				exit("set_nothing", "set_nothing");
 			}
 			else if (tbItemId == "ready_btn") {
-				//debugger;
 				exit(grid.getSelectedId(), "return_selected");
 			}
-			// Add Neosystem Y.Akaoka 2014/01/05
+
+			// Add Neosystem Start
 			else if (tbItemId == "new"){
 				var newItem = top.aras.uiNewItemEx(itemTypeName);
 				var res = aras.newObject();
@@ -305,6 +310,7 @@
 					}, 0);
 				}
 			}
+			// Add Neosystem End
 		}
 
 		function OnChangeItem(tbItem) {
@@ -315,7 +321,7 @@
 			var selected_item = tbItem.getSelectedItem();
 			if (tbItem.getId() == "implementation_type" && selected_item && selected_item != itemTypeID) {
 				if (!searchReady) {
-					//setTimeout has to be used because of events are fired through setTimeout and FF executes setTimeout in special way if non-current window (i.e. parent, top, etc. call exists)
+					//setTimeout has to be used because of events are fired through setTimeout and FF executes setTimeout in special way if non-current window (i.e. "parent", "top", etc. call exists)
 					setTimeout(function(){
 						OnChangeItem(tbItem);
 					}, 0);

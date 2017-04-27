@@ -6,7 +6,7 @@
 		<button image="../images/ClearSearchCriteria.svg" id="newsearch" tooltip="検索条件のクリア" text="検索条件のクリア"/>
 		<button disabled="true" image="../images/StopSearch.svg" id="stop_search" tooltip="検索中止" text="検索中止" />
 		<separator/>
-		<button image="../images/New.svg" id="new" tooltip="新規アイテムの作成" statusmsg="Create a New Item" disabled="true"> 新規 </button>
+		<button disabled="true" image="../images/New.svg" id="new" tooltip="新規アイテムの作成" text="新規" />
 		<separator/>
 		<choice width="107" id="search_mode" tooltip="Search modes" text="検索モード">
 		</choice>
