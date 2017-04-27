@@ -1,0 +1,398 @@
+﻿<!DOCTYPE html>
+<!-- (c) Copyright by Aras Corporation, 2004-2013. -->
+<html>
+<head>
+	<title></title>
+	<meta charset="UTF-8" />
+	<link rel="stylesheet" type="text/css" href="../styles/default.css" />
+	<style type="text/css">
+		@import "../javascript/dojo/resources/dojo.css";
+		@import "../javascript/dijit/themes/claro/claro.css";
+		@import "../javascript/dojox/grid/resources/claroGrid.css";
+		@import "../javascript/dojox/form/resources/CheckedMultiSelect.css";
+		@import "../javascript/include.aspx?classes=common.css";
+
+		html,body{
+			overflow: hidden;
+			width   : 100%;
+			height  : 100%;
+			margin  : 0px;
+			padding : 0px;
+		}
+
+		.dojoxGridView {
+			top: 0px !important;
+		}
+	</style>
+	<script type="text/javascript" src="../javascript/dialog.js"></script>
+	<script type="text/javascript" src="../javascript/include.aspx?classes=ScriptSet1"></script>
+	<script type="text/javascript" src="../javascript/include.aspx?classes=ScriptSet6"></script>
+	<script type="text/javascript">
+		var searchArguments = {}, returnValueBackup = typeof (returnValue) === "undefined" ? undefined : returnValue,
+			tmpSearchArguments = parent.dialogArguments || top.dialogArguments;
+		if (typeof tmpSearchArguments === "object") {
+			//make a copy of the original arguments because of nested popup can modify dialogArguments
+			for (var k in tmpSearchArguments) {
+				searchArguments[k] = tmpSearchArguments[k];
+			}
+		}
+		var aras = top.aras ? top.aras : new Aras(searchArguments.aras);
+	</script>
+	<script type="text/javascript" src="../javascript/include.aspx?classes=/dojo.js" data-dojo-config="baseUrl:'../javascript/dojo'"></script>
+	<script type="text/javascript">
+		var searchbar = null,
+			grid = null,
+			statusbar = null;
+
+		require(["dojo/parser", "dojo/domReady!"], function (parser) {
+			parser.parse();
+		});
+
+		clientControlsFactory.createControl("Aras.Client.Controls.Public.Toolbar", { id: "top_toolbar", connectId: "top" }, function (control) {
+			document.searchbar = searchbar = control;
+			clientControlsFactory.on(searchbar, {
+				"onClick": onTbItemClick,
+				"onChange": OnChangeItem
+			});
+		});
+		var resourceUrl = aras.getI18NXMLResource("tabview_statusbar.xml", aras.getBaseURL());
+		clientControlsFactory.createControl("Aras.Client.Controls.Experimental.StatusBar", { id: "bottom_statusBar", aras: aras, resourceUrl: resourceUrl }, function(control) {
+			statusbarCtrl = control;
+			var bottomNode = document.getElementById("bottom");
+			bottomNode.appendChild(statusbarCtrl.domNode);
+			statusbarCtrl.startup();
+			statusbar = clientControlsFactory.createControl("Aras.Client.Frames.StatusBar", {aras: aras, statusbar: statusbarCtrl});
+		});
+
+		clientControlsFactory.createControl("Aras.Client.Controls.Public.GridContainer", { onStartSearch_Experimental: doSearch }, function(control) {
+			grid = control;
+			clientControlsFactory.on(grid, {
+				"onStartEdit_Experimental": startCellEditSD,
+				"gridXmlLoaded": function () { grid.setMultiselect(multiselect); },
+				"onApplyEdit_Experimental": applyCellEditSD,
+				"gridDoubleClick": onDoubleClick,
+				"onInputHelperShow_Experimental": showInputHelperDialog,
+				"gridLinkClick": function (linkVal) {
+					if (linkVal.length) {
+						linkVal = linkVal.replace(/'/g, "");
+						var typeName = linkVal.split(",")[0];
+						var id = linkVal.split(",")[1];
+						aras.uiShowItem(typeName, id);
+					}
+				}
+			});
+		});
+	</script>
+	<script type="text/javascript">
+		/*
+		Dialog arguments:
+		aras
+		itemTypeName or itemtypeID
+		sourceItemTypeName
+		sourcePropertyName
+		handler (if undefined used default behavior, handler signature: handler_func(Item))
+		(boolean) multiselect
+
+		Search Dialog Behavior
+		If action='exit' then ReturnValue = nothing, window is closed.
+
+		Following actions: Double-click, Return Selected click, Set Nothing mean the same: user is going to exit from the Search Dialog.
+
+		if action is Double-click then type_of_action="doubleclick"
+		if action is Return Selected then type_of_action="return_selected"
+		if action is Set Nothing then type_of_action="set_nothing"
+
+		When user is going to exit from the Search Dialog.
+		Switch param.multiselect:
+		1. param.multiselect = true
+		ReturnValue = selected item ids array.
+		NOTE: Grid Multiselect = true has to be supported
+		2. param.multiselect = false
+		Double-click:
+		ReturnValue = item structure (as currently implemented).
+		NOTE: Grid Multiselect = false has to be supported
+		End Switch
+
+		if Handler<>NULL Then
+		Handler call (input params: 1) ReturnValue, 2) type_of_action ),
+		if hadler returns true then modal dialog is closed.
+		Else
+		Close the window
+		End If
+
+		Places to Test:
+		1. Relationships Grid:
+		- Pick action: param.multiselect = true, double-click: search dialog is not closed, new relationships is added.
+		- Pick/Replace action: param.multiselect = false, handler is null.
+		2. Property of type=Item:
+		- param.multiselect = false, handler is null
+		*/
+		searchLocation = "Search Dialog";
+		var searchReady = false;
+		
+		if (searchArguments.itemtypeName) {
+			itemTypeName = searchArguments.itemtypeName
+			itemTypeID = aras.getItemTypeId(itemTypeName);
+		}
+		else if (searchArguments.itemtypeID) {
+			itemTypeID = searchArguments.itemtypeID;
+			itemTypeName = aras.getItemTypeName(itemTypeID);
+		}
+
+		if (searchArguments.handler) {
+			var handler = searchArguments.handler;
+		}
+
+		var sourceItemTypeName = searchArguments.sourceItemTypeName;
+		var sourcePropertyName = searchArguments.sourcePropertyName;
+		var multiselect = (searchArguments.multiselect) ? true : false;
+
+		initPage(true);
+		if (searchArguments.dialog) {
+			searchArguments.dialog.set("title", aras.getResource("", "searchdlg.search", (itemTypeLabel ? itemTypeLabel : itemTypeName)))
+		} else {
+			document.title = aras.getResource("", "searchdlg.search", (itemTypeLabel ? itemTypeLabel : itemTypeName));
+		}
+
+		function makeReturnValue(itemID) {
+			var res = aras.newObject();
+
+			if (itemID == "set_nothing") {
+				res.itemID = "";
+				res.keyed_name = "";
+			}
+			else {
+				res.itemID = itemID;
+				res.keyed_name = itemID;
+
+				if (itemID) {
+					var itm = currQryItem.getResult().selectSingleNode("Item[@id='" + itemID + "']");
+					if (itm) res.keyed_name = aras.getKeyedNameEx(itm);
+					res.item = itm;
+				}
+			}
+			return res;
+		}
+
+		onload = function onloadHandler() {
+			if (!searchbar || !grid || !statusbar) {
+				setTimeout(onloadHandler, 50);
+				return;
+			}
+			loadToolbar();
+			initToolbar();
+			initSearch(true);
+
+			//Change dialog size and position to fit all toolbar buttons.
+			var tbElements = searchbar.getActiveToolbar().getItemIds_Experimental("$");
+			tbElements = tbElements.split("$");
+			var allElementsWidth = 8;
+			var actToolbar = searchbar.getActiveToolbar();
+			var lastVisibleIndx = 0;
+
+			for (var i = 0; i < tbElements.length; i++) {
+				if (tbElements[i] && actToolbar.isItemVisible_Experimental(tbElements[i])) lastVisibleIndx = i;
+			}
+
+			var tmpss = [];
+			for (var i = 0; i < tbElements.length; i++) {
+				var w = actToolbar.getItemSize(tbElements[i]);
+				tmpss.push(tbElements[i] + ":");
+				if (!tbElements[i] || actToolbar.isItemVisible_Experimental(tbElements[i]) || i >= lastVisibleIndx) {
+					if (w) {
+						w = parseInt(w.split(",")[0], 10);
+						allElementsWidth += w;
+						tmpss[tmpss.length - 1] += w;
+					}
+				}
+			}
+			if (screen.availWidth < allElementsWidth) {
+				allElementsWidth = screen.availWidth;
+			}
+
+			var dialogLeft, maxWidth = document.body.offsetWidth;
+			if (maxWidth < allElementsWidth) {
+				dialogLeft = (screen.availWidth - allElementsWidth) / 2;
+				aras.browserHelper.setDialogWidth(window, document.body.offsetWidth, allElementsWidth, dialogLeft);
+			}
+		}
+
+		function initSearch(isFirstTime) {
+			searchReady = false;
+			setupGrid(true);
+
+			var searchPlaceholder = document.getElementById("searchPlaceholder");
+			if (!isFirstTime) {
+				searchContainer.removeIFramesCollection();
+			}
+			searchContainer = new SearchContainer(itemTypeName, searchbar, grid, null, searchLocation, searchPlaceholder);
+			searchContainer.onStartSearchContainer();
+
+			//disable "fixed criterion" cells of input row
+			var colOrder = grid.getLogicalColumnOrder().split(";");
+			for (var j = 0; j < colOrder.length; j++) {
+				var colName = colOrder[j];
+				var propertyName = colName.substr(0, colName.length - 2);
+
+				if (propertyName && userMethodColumnCfgs[propertyName] && userMethodColumnCfgs[propertyName].isFilterFixed) {
+					grid.inputRow.set(grid.GetColumnIndex(colName), "disabled", true);
+				}
+			}
+			// Add Neosystem Y.Akaoka 2014/01/05
+			//debugger;
+			var isRelation = (searchArguments.sourcePropertyName === "related_id")?true:false;
+			var currItemType = top.aras.getItemTypeDictionary(top.aras.getItemTypeName(itemTypeID));
+			if (!currItemType || currItemType.isError())
+			{
+				currItemType = null;
+				return false;
+			}
+
+			currItemType = currItemType.node;
+			
+			var isDependentIT = (top.aras.getItemProperty(currItemType, 'is_dependent') == '1');
+			var can_addFlg = !isDependentIT && top.aras.getPermissions('can_add', itemTypeID);
+			//searchContainer.grid.menuSetEnabled("new", can_addFlg);
+			var tbi, i, arr = searchbar.getItemIdsAsArr_Experimental();
+			for (i in arr) {
+				tbi = searchbar.getItem(arr[i]);
+				if (tbi && arr[i]==="new") {
+					tbi.setEnabled((isRelation)?false:can_addFlg);
+				}
+			}
+
+			
+			searchReady = true;
+			searchContainer.runAutoSearch();
+		}
+
+		function startCellEditSD(rowId, field, cleanIfNeed) {
+			startCellEditCommon.call(this, rowId, field);
+		}
+
+		function applyCellEditSD(rowId, field, cleanIfNeed) {
+			if ("input_row" == rowId && searchReady) {
+				removeFilterListValueIfNeed(rowId, field);
+			}
+			applyCellEditCommon.call(this, rowId, field);
+		}
+
+		function onTbItemClick(tbItem) {
+			var tbItemId = tbItem.getId();
+			if (tbItemId == "filter") {
+				doFilter();
+			}
+			else if (tbItemId == "set_nothing") {
+				exit("set_nothing", "set_nothing");
+			}
+			else if (tbItemId == "ready_btn") {
+				//debugger;
+				exit(grid.getSelectedId(), "return_selected");
+			}
+			// Add Neosystem Y.Akaoka 2014/01/05
+			else if (tbItemId == "new"){
+				var newItem = top.aras.uiNewItemEx(itemTypeName);
+				var res = aras.newObject();
+				res.itemID = newItem.getAttribute("id");
+				res.keyed_name = newItem.getAttribute("id");
+				res.item = newItem;
+				
+				if (searchArguments.callback) {
+					searchArguments.callback(res);
+					setTimeout(function () {
+						searchArguments.dialog.onCancel();
+						res = returnValueBackup;
+					}, 0);
+				}
+			}
+		}
+
+		function OnChangeItem(tbItem) {
+			var itemID = tbItem.getId();
+			if (itemID != "implementation_type" && itemID != "search_mode" && itemID != "saved_search")
+				return;
+
+			var selected_item = tbItem.getSelectedItem();
+			if (tbItem.getId() == "implementation_type" && selected_item && selected_item != itemTypeID) {
+				if (!searchReady) {
+					//setTimeout has to be used because of events are fired through setTimeout and FF executes setTimeout in special way if non-current window (i.e. parent, top, etc. call exists)
+					setTimeout(function(){
+						OnChangeItem(tbItem);
+					}, 0);
+					return;
+				}
+				saveSetups();
+				itemTypeID = selected_item;
+				itemTypeName = aras.getItemTypeName(itemTypeID);
+				initPage(true);
+				initSearch(false);
+			}
+		}
+
+		function onDoubleClick(rowID) {
+			exit(rowID, "doubleclick");
+		}
+
+		function exit(itemID, type_of_action) {
+			var doReturnNothing = (type_of_action == "set_nothing");
+			if (!doReturnNothing && !itemID) {
+				aras.AlertError(aras.getResource("", "searchdlg.select_item"));
+				return;
+			}
+
+			function _close_window() {
+				if (multiselect) {
+					if (doReturnNothing) {
+						returnValue = [];
+					}
+					else {
+						returnValue = grid.getSelectedItemIds();
+					}
+				}
+				else {
+					returnValue = makeReturnValue(itemID);
+				}
+
+				if (searchArguments.callback) {
+					searchArguments.callback(returnValue);
+					setTimeout(function () {
+						searchArguments.dialog.onCancel();
+						returnValue = returnValueBackup;
+					}, 0);
+				}
+				else {
+					window.close();
+				}
+			}
+
+			if (handler) {
+				if (handler(makeReturnValue(itemID), type_of_action)) {
+					_close_window();
+				}
+			}
+			else {
+				_close_window();
+			}
+		}
+
+		function loadToolbar() {
+			searchbar.loadXml(aras.getI18NXMLResource("searchDialog_toolbar.xml"));
+			searchbar.show();
+		}
+	</script>
+</head>
+<body class="claro">
+	<div data-dojo-type="dijit/layout/BorderContainer" style="width: 100%; height: 100%;" id="BorderContainer" class="searchDialog">
+		<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'top'" id="top" style="height: 30px;">
+			<span id="search"></span>
+		</div>
+		<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'" id="gridTD" style="padding: 0;">
+			<table style="width: 100%;">
+				<tr id="searchPlaceholder" style="display: none; vertical-align: top;">
+				</tr>
+			</table>
+		</div>
+		<div data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'bottom'" id="bottom" style="height: 20px;"></div>
+	</div>
+</body>
+</html>

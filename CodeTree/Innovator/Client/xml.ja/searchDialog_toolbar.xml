@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<toolbarapplet buttonsize="26,25">
+	<toolbar id="search">
+		<choice id="implementation_type" visible="0"/>
+		<button image="../images/ExecuteSearch.svg" id="search" tooltip="検索実行" text="検索実行"/>
+		<button image="../images/ClearSearchCriteria.svg" id="newsearch" tooltip="検索条件のクリア" text="検索条件のクリア"/>
+		<button disabled="true" image="../images/StopSearch.svg" id="stop_search" tooltip="検索中止" text="検索中止" />
+		<separator/>
+		<button image="../images/New.svg" id="new" tooltip="新規アイテムの作成" statusmsg="Create a New Item" disabled="true"> 新規 </button>
+		<separator/>
+		<choice width="107" id="search_mode" tooltip="Search modes" text="検索モード">
+		</choice>
+		<choice id="saved_search" tooltip="Saved searches" text="保存検索" label="保存検索:">
+		</choice>
+		<separator/>
+		<button image="../images/AddSearchCriteria.svg" id="add_criteria" tooltip="検索条件の追加" text="検索条件の追加" invisible="true" />
+		<button image="../images/SelectAll.svg" id="select_all" tooltip="全て選択" text="全て選択"/>
+		<edit id="page_size" tooltip="ページサイズ" text="" size="3"/>
+		<button disabled="true" image="../images/PreviousPage.svg" id="prev_page" tooltip="前のページ" text="前のページ"/>
+		<button disabled="true" image="../images/NextPage.svg" id="next_page" tooltip="次のページ" text="次のページ"/>
+		<separator/>
+		<edit id="max_search" tooltip="最大検索数" text="" size="3"/>
+		<separator/>
+		<button image="../images/Checkmark.svg" id="ready_btn" tooltip="選択して閉じる" text="選択して閉じる"/>
+		<button image="../images/Delete.svg" id="set_nothing" tooltip="選択をクリア" text="選択をクリア"/>
+	</toolbar>
+</toolbarapplet>
